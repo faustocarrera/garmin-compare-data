@@ -1,0 +1,2 @@
+# project requirements
+beautifulsoup4>=4.9
