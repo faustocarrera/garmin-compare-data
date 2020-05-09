@@ -34,17 +34,28 @@ class Compare():
             with open(path.join(self.folder, file), 'rb') as infile:
                 soup = BeautifulSoup(infile.read(), 'lxml')
                 activity = soup.trainingcenterdatabase.activities.activity
-                # the id, date and time
+                # the date and time
                 date_time = self.__get_datetime(activity.id.get_text())
                 activities['dates'].append(date_time)
+                activities['time'][date_time] = []
                 activities['distance'][date_time] = []
                 activities['heart_rate'][date_time] = []
                 activities['cadence'][date_time] = []
                 activities['watts'][date_time] = []
                 # trackpoints
                 counter = 0
+                start_time = None
                 trackpoints = activity.find_all('trackpoint')
                 for trackpoint in trackpoints:
+                    # calculate the time
+                    activities['time'][date_time].append(
+                        self.__get_activity_time(
+                            start_time,
+                            trackpoint.time.get_text()
+                        )
+                    )
+                    if start_time is None:
+                        start_time = trackpoint.time.get_text()
                     # add data
                     activities['distance'][date_time].append(
                         self.__get_distance(trackpoint)
@@ -112,6 +123,20 @@ class Compare():
         "Get datetime object from string"
         date_time = datetime.strptime(string, '%Y-%m-%dT%H:%M:%S.000Z')
         return date_time.strftime('%Y-%m-%d')
+    
+    @staticmethod
+    def __get_activity_time(time_start, time_end):
+        "Get datetime object from string"
+        if time_start is None:
+            return 0
+        # calculate delta
+        time_format = '%Y-%m-%dT%H:%M:%S.000Z'
+        start = datetime.strptime(time_start, time_format)
+        end = datetime.strptime(time_end, time_format)
+        delta = end - start
+        minutes, seconds = divmod(delta.seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        return '{0:02d}:{1:02d}'.format(minutes, seconds)
 
 
 @click.command()
