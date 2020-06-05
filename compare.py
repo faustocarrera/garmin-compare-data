@@ -28,7 +28,8 @@ class Compare():
             'distance': {},
             'heart_rate': {},
             'cadence': {},
-            'watts': {}
+            'watts': {},
+            'speed': {}
         }
         for file in files:
             with open(path.join(self.folder, file), 'rb') as infile:
@@ -42,6 +43,7 @@ class Compare():
                 activities['heart_rate'][date_time] = []
                 activities['cadence'][date_time] = []
                 activities['watts'][date_time] = []
+                activities['speed'][date_time] = []
                 # trackpoints
                 counter = 0
                 start_time = None
@@ -69,11 +71,14 @@ class Compare():
                     activities['watts'][date_time].append(
                         self.__get_watts(trackpoint)
                     )
+                    activities['speed'][date_time].append(
+                        self.__get_speed(trackpoint)
+                    )
                     counter += 1
         # make the calculations
-        self.__draw_heart_rate(activities, chart)
+        self.__generate_graphic(activities, chart)
 
-    def __draw_heart_rate(self, activities, chart):
+    def __generate_graphic(self, activities, chart):
         "Draw comparative graphics"
         for date_time in sorted(activities['dates']):
             # distance
@@ -112,6 +117,14 @@ class Compare():
         if watts_node:
             return int(watts_node.get_text())
         return 0
+    
+    @staticmethod
+    def __get_speed(trackpoint):
+        "Get speed"
+        speed_node = trackpoint.extensions.find('ns3:tpx').find('ns3:speed')
+        if speed_node:
+            return float(speed_node.get_text()) * 3.6
+        return 0
 
     @staticmethod
     def __get_files(folder):
@@ -143,7 +156,7 @@ class Compare():
 @click.option(
     '--chart',
     '-c',
-    type=click.Choice(['heart_rate', 'cadence', 'watts'], case_sensitive=True),
+    type=click.Choice(['heart_rate', 'cadence', 'watts', 'speed'], case_sensitive=True),
     default='heart_rate',
     help='Chart to export'
 )
