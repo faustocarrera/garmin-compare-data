@@ -8,19 +8,23 @@ from os import listdir
 from datetime import datetime
 from datetime import timedelta
 from bs4 import BeautifulSoup
+from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import click
 
 
 class Compare():
     "Compare Garmin workouts"
 
-    def __init__(self, folder):
-        self.folder = folder
-        self.figure = go.Figure()
+    def __init__(self, source):
+        self.folder = source
+        self.fields = ['heart_rate', 'cadence', 'watts', 'speed']
+        self.colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'teal', 'dimgrey']
 
-    def run(self, chart):
-        "Turn the lights on"
+    def run(self):
+        data = self.__get_data()
+        self.__generate_graphics(data)
+
+    def __get_data(self):
         files = self.__get_files(self.folder)
         activities = {
             'dates': [],
@@ -45,7 +49,6 @@ class Compare():
                 activities['watts'][date_time] = []
                 activities['speed'][date_time] = []
                 # trackpoints
-                counter = 0
                 start_time = None
                 trackpoints = activity.find_all('trackpoint')
                 for trackpoint in trackpoints:
@@ -56,9 +59,10 @@ class Compare():
                             trackpoint.time.get_text()
                         )
                     )
+                    # start time
                     if start_time is None:
                         start_time = trackpoint.time.get_text()
-                    # add data
+                     # add data
                     activities['distance'][date_time].append(
                         self.__get_distance(trackpoint)
                     )
@@ -74,26 +78,86 @@ class Compare():
                     activities['speed'][date_time].append(
                         self.__get_speed(trackpoint)
                     )
-                    counter += 1
-        # make the calculations
-        self.__generate_graphic(activities, chart)
+        return activities
 
-    def __generate_graphic(self, activities, chart):
-        "Draw comparative graphics"
-        for date_time in sorted(activities['dates']):
-            # distance
-            self.figure.add_trace(go.Scatter(
-                x=activities['distance'][date_time],
-                y=activities[chart][date_time],
-                mode='lines',
-                name=('{0} {1}'.format(chart, date_time)).replace('_', ' ').capitalize()
-            ))
-        self.figure.update_layout(
-            title=chart.replace('_', ' ').capitalize() + ' comparison',
-            xaxis_title='Distance',
-            yaxis_title=chart.replace('_', ' ').capitalize()
+    def __generate_graphics(self, data):
+        "Generate the graphics"
+        figure = make_subplots(
+            rows=len(self.fields),
+            cols=1,
+            vertical_spacing=0.05
         )
-        self.figure.show()
+        row_num = 1
+        colors = {}
+        for field in self.fields:
+            for date_time in sorted(data['dates']):
+                # the color
+                show_legend = False
+                if date_time not in colors:
+                    colors[date_time] = self.colors.pop(0)
+                    show_legend = True
+                # add trace
+                figure.add_trace(go.Scatter(
+                    x=data['distance'][date_time],
+                    y=data[field][date_time],
+                    mode='lines',
+                    line=dict(color=colors[date_time]),
+                    legendgroup='{0}-groupe'.format(date_time),
+                    name=date_time,
+                    showlegend = show_legend
+                ), row=row_num, col=1)
+                figure.update_xaxes(title_text='distance', row=row_num, col=1)
+                figure.update_yaxes(title_text=field.replace('_', ' '), row=row_num, col=1)
+            row_num += 1
+        figure.update_layout(
+            title='Activities comparison',
+            height=1920,
+            width=1200
+        )
+        figure.show()
+        
+    def __old(self, title, dates, distance, chart):
+        "Generate the graphics"
+        figure = go.Figure()
+        for date_time in sorted(dates):
+            # distance
+            figure.add_trace(go.Scatter(
+                x=distance[date_time],
+                y=chart[date_time],
+                mode='lines',
+                name=date_time
+            ))
+        figure.update_layout(
+            title='{0} comparison'.format(title),
+            xaxis_title='Distance',
+            yaxis_title=title
+        )
+        figure.show()
+
+    @staticmethod
+    def __get_files(folder):
+        "List files in a directory"
+        return [f for f in listdir(folder) if path.isfile(path.join(folder, f))]
+
+    @staticmethod
+    def __get_datetime(string):
+        "Get datetime object from string"
+        date_time = datetime.strptime(string, '%Y-%m-%dT%H:%M:%S.000Z')
+        return date_time.strftime('%Y-%m-%d')
+
+    @staticmethod
+    def __get_activity_time(time_start, time_end):
+        "Get datetime object from string"
+        if time_start is None:
+            return 0
+        # calculate delta
+        time_format = '%Y-%m-%dT%H:%M:%S.000Z'
+        start = datetime.strptime(time_start, time_format)
+        end = datetime.strptime(time_end, time_format)
+        delta = end - start
+        minutes, seconds = divmod(delta.seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        return '{0:02d}:{1:02d}'.format(minutes, seconds)
 
     @staticmethod
     def __get_distance(trackpoint):
@@ -117,7 +181,7 @@ class Compare():
         if watts_node:
             return int(watts_node.get_text())
         return 0
-    
+
     @staticmethod
     def __get_speed(trackpoint):
         "Get speed"
@@ -126,45 +190,11 @@ class Compare():
             return float(speed_node.get_text()) * 3.6
         return 0
 
-    @staticmethod
-    def __get_files(folder):
-        "List files in a directory"
-        return [f for f in listdir(folder) if path.isfile(path.join(folder, f))]
 
-    @staticmethod
-    def __get_datetime(string):
-        "Get datetime object from string"
-        date_time = datetime.strptime(string, '%Y-%m-%dT%H:%M:%S.000Z')
-        return date_time.strftime('%Y-%m-%d')
-    
-    @staticmethod
-    def __get_activity_time(time_start, time_end):
-        "Get datetime object from string"
-        if time_start is None:
-            return 0
-        # calculate delta
-        time_format = '%Y-%m-%dT%H:%M:%S.000Z'
-        start = datetime.strptime(time_start, time_format)
-        end = datetime.strptime(time_end, time_format)
-        delta = end - start
-        minutes, seconds = divmod(delta.seconds, 60)
-        hours, minutes = divmod(minutes, 60)
-        return '{0:02d}:{1:02d}'.format(minutes, seconds)
-
-
-@click.command()
-@click.option(
-    '--chart',
-    '-c',
-    type=click.Choice(['heart_rate', 'cadence', 'watts', 'speed'], case_sensitive=True),
-    default='heart_rate',
-    help='Chart to export'
-)
-def run(chart):
+def run():
     "Run the comparison"
     compare = Compare(get_path('source'))
-    compare.run(chart)
-
+    compare.run()
 
 def get_path(file_path):
     "Get full path"
