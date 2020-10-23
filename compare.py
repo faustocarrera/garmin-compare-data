@@ -27,7 +27,7 @@ class Compare():
     def __get_data(self):
         files = self.__get_files(self.folder)
         activities = {
-            'dates': [],
+            'files': [],
             'time': {},
             'distance': {},
             'heart_rate': {},
@@ -40,20 +40,20 @@ class Compare():
                 soup = BeautifulSoup(infile.read(), 'lxml')
                 activity = soup.trainingcenterdatabase.activities.activity
                 # the date and time
-                date_time = self.__get_datetime(activity.id.get_text())
-                activities['dates'].append(date_time)
-                activities['time'][date_time] = []
-                activities['distance'][date_time] = []
-                activities['heart_rate'][date_time] = []
-                activities['cadence'][date_time] = []
-                activities['watts'][date_time] = []
-                activities['speed'][date_time] = []
+                # file = self.__get_datetime(activity.id.get_text())
+                activities['files'].append(file)
+                activities['time'][file] = []
+                activities['distance'][file] = []
+                activities['heart_rate'][file] = []
+                activities['cadence'][file] = []
+                activities['watts'][file] = []
+                activities['speed'][file] = []
                 # trackpoints
                 start_time = None
                 trackpoints = activity.find_all('trackpoint')
                 for trackpoint in trackpoints:
                     # calculate the time
-                    activities['time'][date_time].append(
+                    activities['time'][file].append(
                         self.__get_activity_time(
                             start_time,
                             trackpoint.time.get_text()
@@ -63,19 +63,19 @@ class Compare():
                     if start_time is None:
                         start_time = trackpoint.time.get_text()
                      # add data
-                    activities['distance'][date_time].append(
+                    activities['distance'][file].append(
                         self.__get_distance(trackpoint)
                     )
-                    activities['heart_rate'][date_time].append(
+                    activities['heart_rate'][file].append(
                         self.__get_heart_rate(trackpoint)
                     )
-                    activities['cadence'][date_time].append(
+                    activities['cadence'][file].append(
                         self.__get_cadence(trackpoint)
                     )
-                    activities['watts'][date_time].append(
+                    activities['watts'][file].append(
                         self.__get_watts(trackpoint)
                     )
-                    activities['speed'][date_time].append(
+                    activities['speed'][file].append(
                         self.__get_speed(trackpoint)
                     )
         return activities
@@ -90,20 +90,20 @@ class Compare():
         row_num = 1
         colors = {}
         for field in self.fields:
-            for date_time in sorted(data['dates']):
+            for file in sorted(data['files']):
                 # the color
                 show_legend = False
-                if date_time not in colors:
-                    colors[date_time] = self.colors.pop(0)
+                if file not in colors:
+                    colors[file] = self.colors.pop(0)
                     show_legend = True
                 # add trace
                 figure.add_trace(go.Scatter(
-                    x=data['distance'][date_time],
-                    y=data[field][date_time],
+                    x=data['distance'][file],
+                    y=data[field][file],
                     mode='lines',
-                    line=dict(color=colors[date_time]),
-                    legendgroup='{0}-groupe'.format(date_time),
-                    name=date_time,
+                    line=dict(color=colors[file]),
+                    legendgroup='{0}-groupe'.format(file),
+                    name=file,
                     showlegend = show_legend
                 ), row=row_num, col=1)
                 figure.update_xaxes(title_text='distance', row=row_num, col=1)
