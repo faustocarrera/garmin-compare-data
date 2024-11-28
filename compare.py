@@ -17,7 +17,7 @@ class Compare():
 
     def __init__(self, source):
         self.folder = source
-        self.fields = ['heart_rate', 'cadence', 'watts', 'speed']
+        self.fields = ['heart_rate', 'cadence', 'watts', 'speed', 'distance']
         self.colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'teal', 'dimgrey']
 
     def run(self):
@@ -37,7 +37,7 @@ class Compare():
         }
         for file in files:
             with open(path.join(self.folder, file), 'rb') as infile:
-                soup = BeautifulSoup(infile.read(), 'lxml')
+                soup = BeautifulSoup(infile.read(), features='lxml')
                 activity = soup.trainingcenterdatabase.activities.activity
                 # the date and time
                 # file = self.__get_datetime(activity.id.get_text())
@@ -98,7 +98,7 @@ class Compare():
                     show_legend = True
                 # add trace
                 figure.add_trace(go.Scatter(
-                    x=data['distance'][file],
+                    x=data['time'][file],
                     y=data[field][file],
                     mode='lines',
                     line=dict(color=colors[file]),
@@ -106,7 +106,7 @@ class Compare():
                     name=file,
                     showlegend = show_legend
                 ), row=row_num, col=1)
-                figure.update_xaxes(title_text='distance', row=row_num, col=1)
+                figure.update_xaxes(title_text='time', row=row_num, col=1)
                 figure.update_yaxes(title_text=field.replace('_', ' '), row=row_num, col=1)
             row_num += 1
         figure.update_layout(
@@ -115,35 +115,11 @@ class Compare():
             width=1200
         )
         figure.show()
-        
-    def __old(self, title, dates, distance, chart):
-        "Generate the graphics"
-        figure = go.Figure()
-        for date_time in sorted(dates):
-            # distance
-            figure.add_trace(go.Scatter(
-                x=distance[date_time],
-                y=chart[date_time],
-                mode='lines',
-                name=date_time
-            ))
-        figure.update_layout(
-            title='{0} comparison'.format(title),
-            xaxis_title='Distance',
-            yaxis_title=title
-        )
-        figure.show()
 
     @staticmethod
     def __get_files(folder):
         "List files in a directory"
         return [f for f in listdir(folder) if path.isfile(path.join(folder, f))]
-
-    @staticmethod
-    def __get_datetime(string):
-        "Get datetime object from string"
-        date_time = datetime.strptime(string, '%Y-%m-%dT%H:%M:%S.000Z')
-        return date_time.strftime('%Y-%m-%d')
 
     @staticmethod
     def __get_activity_time(time_start, time_end):
@@ -157,12 +133,13 @@ class Compare():
         delta = end - start
         minutes, seconds = divmod(delta.seconds, 60)
         hours, minutes = divmod(minutes, 60)
-        return '{0:02d}:{1:02d}'.format(minutes, seconds)
+        return '{0:02d}:{1:02d}:{2:02d}'.format(hours, minutes, seconds)
 
     @staticmethod
     def __get_distance(trackpoint):
         "Get distance"
-        return '{:.3f}'.format(float(trackpoint.distancemeters.get_text()))
+        distance = float(trackpoint.distancemeters.get_text()) / 1000
+        return '{:.1f}k'.format(distance)
 
     @staticmethod
     def __get_heart_rate(trackpoint):
@@ -172,7 +149,9 @@ class Compare():
     @staticmethod
     def __get_cadence(trackpoint):
         "Get cadence"
-        return int(trackpoint.cadence.get_text())
+        if trackpoint.cadence:
+            return int(trackpoint.cadence.get_text())
+        return 0
 
     @staticmethod
     def __get_watts(trackpoint):
