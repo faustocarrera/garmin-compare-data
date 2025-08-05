@@ -20,15 +20,8 @@ class Compare():
                        'orange', 'yellow', 'teal', 'dimgrey']
 
     def run(self, option):
-        "Run the comparison"
-        garmin_data = self.read_tcx.parse()
-        if option == 'lines':
-            self.__generate_line_graphic(garmin_data)
-        else:
-            print("Unsupported option. Please use 'graph' to generate graphics.")
-
-    def __generate_line_graphic(self, garmin_data):
         "Generate the graphics for the comparison"
+        garmin_data = self.read_tcx.parse()
         ref = 'distance'
         row_num = 1
         col_num = 1
@@ -45,16 +38,25 @@ class Compare():
                 if file not in colors:
                     colors[file] = self.colors.pop(0)
                     show_legend = True
-                # add trace
-                figure.add_trace(go.Scatter(
-                    x=df[ref],
-                    y=df[field],
-                    mode='lines',
-                    line=dict(color=colors[file]),
-                    legendgroup=f"{file}-groupe",
-                    name=file,
-                    showlegend=show_legend
-                ), row=row_num, col=col_num)
+                if option == 'histogram':
+                    figure.add_trace(go.Histogram(
+                        x=df[field],
+                        legendgroup=f"{file}-groupe",
+                        name=file,
+                        showlegend=show_legend,
+                        opacity=0.75
+                    ), row=row_num, col=col_num)
+                else:
+                    # add trace
+                    figure.add_trace(go.Scatter(
+                        x=df[ref],
+                        y=df[field],
+                        mode='lines',
+                        line=dict(color=colors[file]),
+                        legendgroup=f"{file}-groupe",
+                        name=file,
+                        showlegend=show_legend
+                    ), row=row_num, col=col_num)
                 figure.update_xaxes(
                     title_text=ref,
                     row=row_num,
@@ -66,9 +68,18 @@ class Compare():
                     col=col_num
                 )
             row_num += 1
-        figure.update_layout(
-            title='Activities comparison',
-            height=1920,
-            width=1200
-        )
+        if option == 'histogram':
+            figure.update_layout(
+                title='Activities comparison',
+                height=1920,
+                width=1200,
+                barmode='overlay'
+            )
+            figure.update_traces(opacity=0.75)
+        else:
+            figure.update_layout(
+                title='Activities comparison',
+                height=1920,
+                width=1200
+            )
         figure.show()
