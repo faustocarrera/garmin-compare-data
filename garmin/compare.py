@@ -32,22 +32,24 @@ class Compare():
             vertical_spacing=0.05
         )
         for field in self.fields:
+            file_count = 0
             for file, df in garmin_data.items():
                 # the color
                 show_legend = False
                 if file not in colors:
                     colors[file] = self.colors.pop(0)
                     show_legend = True
-                if option == 'histogram':
-                    figure.add_trace(go.Histogram(
-                        x=df[field],
+                if option == 'bars':
+                    figure.add_trace(go.Bar(
+                        x=df[ref],
+                        y=df[field],
+                        marker_color=colors[file],
                         legendgroup=f"{file}-groupe",
                         name=file,
                         showlegend=show_legend,
-                        opacity=0.75
+                        opacity=0.7 if file_count > 0 else 1.0
                     ), row=row_num, col=col_num)
                 else:
-                    # add trace
                     figure.add_trace(go.Scatter(
                         x=df[ref],
                         y=df[field],
@@ -67,15 +69,15 @@ class Compare():
                     row=row_num,
                     col=col_num
                 )
+                file_count += 1
             row_num += 1
-        if option == 'histogram':
+        if option == 'bars':
             figure.update_layout(
                 title='Activities comparison',
                 height=1920,
                 width=1200,
                 barmode='overlay'
             )
-            figure.update_traces(opacity=0.75)
         else:
             figure.update_layout(
                 title='Activities comparison',
